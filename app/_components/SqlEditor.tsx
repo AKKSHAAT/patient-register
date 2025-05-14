@@ -3,7 +3,7 @@
   import Prism from 'prismjs'
 
   import 'prismjs/components/prism-sql'
-  import 'prismjs/themes/prism-okaidia.css' 
+  import 'prismjs/themes/prism.css' 
 
   const SqlEditor = ({query, setQuery} : {query: string, setQuery: Dispatch<SetStateAction<string>>}) => {
 
@@ -17,7 +17,7 @@
         onValueChange={setQuery}
         highlight={code => Prism.highlight(code, Prism.languages.sql, 'sql')}
         padding={10}
-        className="font-mono text-sm rounded-lg border border-gray-300 min-h-[200px] w-[75vw] whitespace-pre-wrap focus:outline-none"
+        className="font-mono text-lg font-medium rounded-lg border  min-h-[200px] w-[75vw] whitespace-pre-wrap focus:outline-none"
       />
     )
   }
