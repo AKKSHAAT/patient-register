@@ -2,11 +2,14 @@
 import { useState, useEffect } from "react";
 import { PGlite } from '@electric-sql/pglite'
 import DataTable, {TableProps} from "./table";
+import Loading from "./loading";
+import SqlEditor from "./SqlEditor";
 
 
 export default function Home() {
   const [db, setDb] = useState<PGlite | null>(null);
   const [queriedData, setQueriedData] = useState<TableProps | null >(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [query, setQuery] = useState<string>("");
   useEffect(() => {
     const initDb = async () => {
@@ -26,6 +29,7 @@ export default function Home() {
 
 
   const createTable = async () => {
+    setLoading(true);
     await db?.exec(`
       CREATE TABLE IF NOT EXISTS todo (
         id SERIAL PRIMARY KEY,
@@ -38,42 +42,51 @@ export default function Home() {
       INSERT INTO todo (task, done) VALUES ('Insert some data', true);
       INSERT INTO todo (task) VALUES ('Update a task');
   `);
+  setLoading(false);
     alert("Table created!");
   };
 
   const fetchData = async () => {
+    setLoading(true);
     const ret = await db?.query(`
       SELECT * from todo;
     `)
+    setLoading(false);
     setQueriedData(ret);
   };
 
   const updateData = async () => {
+    setLoading(true);
     const ret = await db?.query(
       'UPDATE todo SET task = $2, done = $3 WHERE id = $1',
       [5, 'Update a task using parametrised queries', true],
     );
     setQueriedData(ret);
+    setLoading(false);
     alert("Data inserted!");
   }
 
   const executeQuery = async () => {
+    setLoading(true);
     const ret = await db?.exec(query);
     if (ret) {
       console.log("Query executed successfully:", ret, query);
       fetchData();
     }
+    setLoading(false);
     alert("Data inserted!");
   }
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+    <div className="items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:p-8 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
+        {loading && <Loading />}
         {queriedData && (
           <div className="overflow-x-auto w-full">
             <DataTable data={queriedData} />
           </div>
         )}
-        <textarea
+        <SqlEditor query={query} setQuery={setQuery}/>
+        {/* <textarea
           value={query}
           onChange={(e) => {
             const query = e.target.value;
@@ -81,7 +94,7 @@ export default function Home() {
           }}
           className="w-full sm:w-[400px] h-[250px] border px-3 py-2 rounded resize-none"
           placeholder="text field"
-        />
+        /> */}
         <div>
           <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={createTable} >
             Create Table

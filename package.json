@@ -11,13 +11,16 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.3.1",
     "next": "15.3.2",
+    "prismjs": "^1.30.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-simple-code-editor": "^0.14.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/prismjs": "^1.26.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
