@@ -1,32 +1,35 @@
-'use client'
+"use client";
 import { useState, useEffect } from "react";
-import { PGlite } from '@electric-sql/pglite'
-import DataTable, {TableProps} from "./table";
+import { PGlite } from "@electric-sql/pglite";
+import DataTable, { TableProps } from "./table";
 import Loading from "./loading";
 import SqlEditor from "./SqlEditor";
-
+import Notify from "./Notify";
 
 export default function Home() {
   const [db, setDb] = useState<PGlite | null>(null);
-  const [queriedData, setQueriedData] = useState<TableProps | null >(null);
+  const [queriedData, setQueriedData] = useState<TableProps | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [query, setQuery] = useState<string>("");
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
   useEffect(() => {
     const initDb = async () => {
       try {
-        const database = new PGlite()
+        const database = new PGlite();
         setDb(database);
       } catch (error) {
         console.error("Failed to initialize PGlite:", error);
       }
     };
-    
-    initDb();
-    
-    return () => {
-    };
-  }, []);
 
+    initDb();
+
+    return () => {};
+  }, []);
 
   const createTable = async () => {
     setLoading(true);
@@ -42,7 +45,7 @@ export default function Home() {
       INSERT INTO todo (task, done) VALUES ('Insert some data', true);
       INSERT INTO todo (task) VALUES ('Update a task');
   `);
-  setLoading(false);
+    setLoading(false);
     alert("Table created!");
   };
 
@@ -50,7 +53,7 @@ export default function Home() {
     setLoading(true);
     const ret = await db?.query(`
       SELECT * from todo;
-    `)
+    `);
     setLoading(false);
     setQueriedData(ret);
   };
@@ -58,54 +61,74 @@ export default function Home() {
   const updateData = async () => {
     setLoading(true);
     const ret = await db?.query(
-      'UPDATE todo SET task = $2, done = $3 WHERE id = $1',
-      [5, 'Update a task using parametrised queries', true],
+      "UPDATE todo SET task = $2, done = $3 WHERE id = $1",
+      [5, "Update a task using parametrised queries", true]
     );
     setQueriedData(ret);
     setLoading(false);
     alert("Data inserted!");
-  }
-
+  };
   const executeQuery = async () => {
     setLoading(true);
-    const ret = await db?.exec(query);
-    if (ret) {
-      console.log("Query executed successfully:", ret, query);
-      fetchData();
+    setNotification(null);
+    try {
+      const ret = await db?.exec(query);
+      if (ret) {
+        console.log("Query executed successfully:", ret, query);
+        fetchData();
+      }
+      setNotification({
+        type: "success",
+        message: "Query executed successfully!",
+      });
+    } catch (error: any) {
+      console.error("SQL Error:", error);
+      setNotification({
+        type: "error",
+        message: `Error executing query: ${error.message}`,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    alert("Data inserted!");
-  }
+  };
+
   return (
     <div className="items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:p-8 font-[family-name:var(--font-geist-sans)]">
+      {" "}
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
         {loading && <Loading />}
+        {notification && (
+          <Notify type={notification.type} message={notification.message} />
+        )}
         {queriedData && (
           <div className="overflow-x-auto w-full">
             <DataTable data={queriedData} />
           </div>
         )}
-        <SqlEditor query={query} setQuery={setQuery}/>
-        {/* <textarea
-          value={query}
-          onChange={(e) => {
-            const query = e.target.value;
-            setQuery(query);
-          }}
-          className="w-full sm:w-[400px] h-[250px] border px-3 py-2 rounded resize-none"
-          placeholder="text field"
-        /> */}
+        <SqlEditor query={query} setQuery={setQuery} />
         <div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={createTable} >
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={createTable}
+          >
             Create Table
           </button>
-          <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-blue-700" onClick={fetchData}  >
+          <button
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-blue-700"
+            onClick={fetchData}
+          >
             fetch data
           </button>
-          <button className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-blue-700" onClick={updateData}  >
+          <button
+            className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-blue-700"
+            onClick={updateData}
+          >
             update data
           </button>
-          <button className="px-4 py-2 bg-red-600 text-white rounded hover:bg-blue-700" onClick={executeQuery}  >
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-blue-700"
+            onClick={executeQuery}
+          >
             Run
           </button>
         </div>
