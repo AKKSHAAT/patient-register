@@ -1,21 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PGlite } from "@electric-sql/pglite";
+import { Patient } from "../page";
 
 interface FormProps {
   db: PGlite | null;
   onSuccess?: () => void;
+  initialData?: Patient | null; // Add this prop
 }
 
-export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
-  const [name, setName] = useState("");
-  const [dob, setDob] = useState("");
-  const [gender, setGender] = useState("");
-  const [contact, setContact] = useState("");
-  const [bloodGroup, setBloodGroup] = useState("");
+export default function PatientRegistrationForm({
+  db,
+  onSuccess,
+  initialData,
+}: FormProps) {
+  const [formData, setFormData] = useState({
+    name: initialData?.name || "",
+    dob: initialData?.age ? new Date().toISOString().split("T")[0] : "",
+    gender: initialData?.gender || "",
+    contact: initialData?.contact || "",
+    bloodGroup: initialData?.blood_group || "",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFormData({
+      name: initialData?.name || "",
+      dob: initialData?.age ? new Date().toISOString().split("T")[0] : "",
+      gender: initialData?.gender || "",
+      contact: initialData?.contact || "",
+      bloodGroup: initialData?.blood_group || "",
+    });
+  }, [initialData]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
 
   const calculateAge = (dateOfBirth: string): number | null => {
     if (!dateOfBirth) return null;
@@ -48,7 +73,7 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
       if (!db) throw new Error("Database not initialized");
 
       // Calculate age from DOB
-      const age = calculateAge(dob);
+      const age = calculateAge(formData.dob);
       console.log(age);
 
       // Format date for SQL
@@ -60,15 +85,24 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
         INSERT INTO patients (name, age, gender, contact, blood_group, created_at)
         VALUES ($1, $2, $3, $4, $5, $6)
       `,
-        [name, age, gender, contact, bloodGroup, currentDate]
+        [
+          formData.name,
+          age,
+          formData.gender,
+          formData.contact,
+          formData.bloodGroup,
+          currentDate,
+        ]
       );
 
       // Clear form after successful submission
-      setName("");
-      setDob("");
-      setGender("");
-      setContact("");
-      setBloodGroup("");
+      setFormData({
+        name: "",
+        dob: "",
+        gender: "",
+        contact: "",
+        bloodGroup: "",
+      });
 
       // Call success callback if provided
       if (onSuccess) {
@@ -106,8 +140,8 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
             <input
               type="text"
               id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={formData.name}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -124,8 +158,8 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
             <input
               type="date"
               id="dob"
-              value={dob}
-              onChange={(e) => setDob(e.target.value)}
+              value={formData.dob}
+              onChange={handleInputChange}
               placeholder="MM/DD/YYYY"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -142,8 +176,8 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
             </label>
             <select
               id="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
+              value={formData.gender}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
               required
             >
@@ -166,8 +200,8 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
             <input
               type="tel"
               id="contact"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
+              value={formData.contact}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -183,8 +217,8 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
           </label>
           <select
             id="bloodGroup"
-            value={bloodGroup}
-            onChange={(e) => setBloodGroup(e.target.value)}
+            value={formData.bloodGroup}
+            onChange={handleInputChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
           >
             <option value="">Select blood group</option>
@@ -198,14 +232,15 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
             <option value="O-">O-</option>
           </select>
         </div>
-
-        <button
-          type="submit"
-          className="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors disabled:bg-blue-300"
-          disabled={loading}
-        >
-          {loading ? "Processing..." : "Register"}
-        </button>
+        { !initialData && (
+          <button
+            type="submit"
+            className="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors disabled:bg-blue-300"
+            disabled={loading}
+          >
+            {loading ? "Processing..." : "Register"}
+          </button>
+        )} 
       </form>
     </div>
   );

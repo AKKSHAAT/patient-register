@@ -6,18 +6,33 @@ import Loading, { InlineLoading } from "./_components/loading";
 import SqlEditor from "./_components/SqlEditor";
 import Notify from "./_components/Notify";
 import PatientRegistrationForm from "./_components/Form";
+import {
+  createPatientsTableHandler,
+  fetchPatientsHandler,
+  executeQueryHandler,
+} from "./utlis/sqlUtils";
+
+export interface Patient {
+  id: number;
+  name: string;
+  age: number | null;
+  gender: string | null;
+  contact: string | null;
+  blood_group: string | null;
+}
 
 export default function Home() {
   const [db, setDb] = useState<PGlite | null>(null);
   const [queriedData, setQueriedData] = useState<TableProps | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [initialLoading, setInitialLoading] = useState<boolean>(false);
-  const [query, setQuery] = useState<string>("");
+  const [query, setQuery] = useState<string>("SELECT * FROM patients");
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
   useEffect(() => {
     const initDb = async () => {
@@ -26,6 +41,15 @@ export default function Home() {
           dataDir: "idb://my-pgdata",
         });
         setDb(database);
+        if (database) {
+          setInitialLoading(true);
+          await createPatientsTableHandler(
+            database,
+            setNotification,
+            fetchPatients
+          );
+          setInitialLoading(false);
+        }
       } catch (error) {
         console.error("Failed to initialize PGlite:", error);
       }
@@ -34,135 +58,28 @@ export default function Home() {
     initDb();
   }, []);
 
-  const createPatientsTable = async () => {
-    setInitialLoading(true);
-    try {
-      const res = await db?.exec(`
-        CREATE TABLE IF NOT EXISTS patients (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          age INTEGER,
-          gender TEXT,
-          contact TEXT,
-          blood_group TEXT,
-          created_at TEXT
-        );
-        INSERT INTO patients (name, age, gender, contact, created_at)
-        VALUES ('Akshat', 21, 'male', '1234567890', '${Date.now()}');
-        INSERT INTO patients (name, age, gender, contact, created_at)
-        VALUES ('akshay', 21, 'male', '1234567890', '${Date.now()}');
-      `);
-
-      if (res) {
-        setNotification({
-          type: "success",
-          message: "Patients table initialized successfully!",
-        });
-        fetchPatients();
-      }
-    } catch (error: any) {
-      console.error("Error creating patients table:", error);
-      setNotification({
-        type: "error",
-        message: `Error creating patients table: ${error.message}`,
-      });
-    } finally {
-      setInitialLoading(false);
-    }
-  };
-
   const fetchPatients = async () => {
     setLoading(true);
-    try {
-      const results = await db?.query(`
-        SELECT * FROM patients ORDER BY created_at DESC;
-      `);
-      if (results) {
-        const typedRows = results.rows as Record<string, any>[];
-        setQueriedData({
-          data: {
-            affectedRows: results.affectedRows ?? 0,
-            fields: results.fields ?? [],
-            rows: typedRows,
-          },
-        });
-      }
-      setNotification({
-        type: "success",
-        message: "Patients data loaded successfully!",
-      });
-    } catch (error: any) {
-      console.error("Error fetching patients:", error);
-      setNotification({
-        type: "error",
-        message: `Error fetching patients: ${error.message}`,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    const ret = await db?.query(`
-      SELECT * from patients;
-    `);
+    await fetchPatientsHandler(db, setQueriedData, setNotification);
     setLoading(false);
-    if (ret) {
-      const typedRows = ret.rows as Record<string, any>[];
-      setQueriedData({
-        data: {
-          affectedRows: ret.affectedRows ?? 0,
-          fields: ret.fields ?? [],
-          rows: typedRows,
-        },
-      });
-    }
-  };
+  }; 
 
-  const updateData = async () => {
-    setLoading(true);
-    const ret = await db?.query(
-      "UPDATE todo SET task = $2, done = $3 WHERE id = $1",
-      [5, "Update a task using parametrised queries", true]
-    );
-    if (ret) {
-      const typedRows = ret.rows as Record<string, any>[];
-      setQueriedData({
-        data: {
-          affectedRows: ret.affectedRows ?? 0,
-          fields: ret.fields ?? [],
-          rows: typedRows,
-        },
-      });
-    }
-    setLoading(false);
-    alert("Data inserted!");
-  };
+  const handleSelectPatient = (data: Patient)=>{
+    setShowForm(true);
+    setSelectedPatient({...data});
+  }
 
   const executeQuery = async () => {
     setLoading(true);
     setNotification(null);
-
-    try {
-      const ret = await db?.exec(query);
-      if (ret) {
-        console.log("Query executed successfully:", ret, query);
-        fetchData();
-      }
-      setNotification({
-        type: "success",
-        message: "Query executed successfully!",
-      });
-    } catch (error: any) {
-      console.error("SQL Error:", error);
-      setNotification({
-        type: "error",
-        message: `Error executing query: ${error.message}`,
-      });
-    } finally {
-      setLoading(false);
-    }
+    await executeQueryHandler(
+      db,
+      query,
+      setNotification,
+      setQueriedData,
+      fetchPatients
+    );
+    setLoading(false);
   };
 
   const handleFormSuccess = () => {
@@ -190,54 +107,58 @@ export default function Home() {
 
   return (
     <div className="items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:px-18 sm:py-2 font-[family-name:var(--font-geist-sans)] bg-[#dfdfdf]">
-      <div className="mt-2 flex gap-2 items-center sm:justify-start justify-center text-blue-700">
-        <img src="/logo.svg" alt="Logo" width={30} height={30} style={{ filter: "invert(23%) sepia(99%) saturate(7477%) hue-rotate(203deg) brightness(97%) contrast(101%)" }} />
-        <h1 className="text-2xl font-semibold">Patient Registration System</h1>
+      <div className="mt-2 flex gap-2 items-baseline sm:justify-start justify-center text-blue-700 mb-4">
+        <img
+          src="/logo.svg"
+          alt="Logo"
+          width={40}
+          height={40}
+          style={{
+            filter:
+              "invert(23%) sepia(99%) saturate(7477%) hue-rotate(203deg) brightness(97%) contrast(101%)",
+          }}
+        />
+        <h1 className="text-4xl font-semibold">Patient Registration System</h1>
       </div>
       <main className="flex flex-col gap-2 row-start-2 items-center sm:items-start">
         <div className="flex items-center gap-4">
-          <div className="flex gap-2 items-baseline">
-            <button
-              onClick={fetchPatients}
-              className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors mb-4"
-            >
-              Load Patient Records
-            </button>
-            <button
-              onClick={createPatientsTable}
-              className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors mb-4"
-            >
-              createPatientsTable
-            </button>
-          </div>
-          <div className="flex justify-between items-center ">
-          </div>
+          <div className="flex justify-between items-center "></div>
         </div>
         {(initialLoading || !db) && <Loading />}
-       
 
         <div className="w-full gap-2 flex flex-col sm:flex-row  mx-auto">
-          <DataTable {...queriedData} />
+          <DataTable {...queriedData} handleSelectPatient={handleSelectPatient} />
           <div className="flex flex-col w-full sm:w-[50%]  mx-auto h-[80vh] bg-white p-6 rounded-lg shadow-md">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowForm(!showForm)}
                 className="bg-black text-white py-2 px-4 w-32 rounded-md hover:bg-gray-700 transition-colors"
-                >
+              >
                 {showForm ? "Use SQL" : "Use Form"}
               </button>
               {loading && <InlineLoading />}
               {notification && (
-                <Notify type={notification.type} message={notification.message} />
+                <Notify
+                  type={notification.type}
+                  message={notification.message}
+                />
               )}
             </div>
             {showForm ? (
-              <div className="mb-8 ">
-                <PatientRegistrationForm db={db} onSuccess={handleFormSuccess} />
+              <div className="mb-8">
+                <PatientRegistrationForm
+                  db={db}
+                  onSuccess={handleFormSuccess}
+                  initialData={selectedPatient} // Pass selectedPatient here
+                />
               </div>
             ) : (
-              <div className="w-full">
-                <SqlEditor query={query} setQuery={setQuery} executeQuery={executeQuery}/> 
+              <div className="w-full h-full">
+                <SqlEditor
+                  query={query}
+                  setQuery={setQuery}
+                  executeQuery={executeQuery}
+                />
               </div>
             )}
           </div>
