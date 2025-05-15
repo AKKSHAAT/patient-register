@@ -8,9 +8,9 @@ type NotifyProps = {
 const Notify: React.FC<NotifyProps> = ({ type, message }) => {
   const bgColor = type === "success" ? "bg-green-600" : "bg-yellow-600";
   const textColor = type === "success" ? "text-green-100" : "text-yellow-100";
-
+  const emoji = type === "success" ? "✅" : "⚠️";
   return (
-    <div className={`p-4 my-3 rounded ${bgColor} ${textColor}`}>{message}</div>
+    <div className={`p-2 rounded-lg ${bgColor} ${textColor}`}>{emoji}{message}</div>
   );
 };
 

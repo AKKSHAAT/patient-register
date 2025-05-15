@@ -13,15 +13,12 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState("");
   const [contact, setContact] = useState("");
-  const [email, setEmail] = useState("");
   const [bloodGroup, setBloodGroup] = useState("");
-  const [allergies, setAllergies] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const calculateAge = (dateOfBirth: string): number | null => {
     if (!dateOfBirth) return null;
-
     try {
       const dob = new Date(dateOfBirth);
       const today = new Date();
@@ -37,6 +34,7 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
 
       return age;
     } catch (err) {
+      console.error("Error calculating age:", err);
       return null;
     }
   };
@@ -51,6 +49,7 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
 
       // Calculate age from DOB
       const age = calculateAge(dob);
+      console.log(age);
 
       // Format date for SQL
       const currentDate = new Date().toISOString();
@@ -58,10 +57,10 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
       // Execute the SQL to insert the new patient
       await db.query(
         `
-        INSERT INTO patients (name, age, gender, contact, email, blood_group, allergies, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO patients (name, age, gender, contact, blood_group, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `,
-        [name, age, gender, contact, email, bloodGroup, allergies, currentDate]
+        [name, age, gender, contact, bloodGroup, currentDate]
       );
 
       // Clear form after successful submission
@@ -69,9 +68,7 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
       setDob("");
       setGender("");
       setContact("");
-      setEmail("");
       setBloodGroup("");
-      setAllergies("");
 
       // Call success callback if provided
       if (onSuccess) {
@@ -86,101 +83,95 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-black">Register New Patient</h2>
-
+    <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
+      <h4 className="text-xl font-medium mb-4">
+        Register New Patient Using a Form
+      </h4>
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
         </div>
-      )}
-
+      )}{" "}
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label
-            htmlFor="name"
-            className="block text-gray-700 font-medium mb-2"
-          >
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+        {/* Responsive grid for name, dob, gender, contact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Name field */}
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-gray-700 font-medium mb-2"
+            >
+              Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
 
-        <div className="mb-4">
-          <label htmlFor="dob" className="block text-gray-700 font-medium mb-2">
-            Date of Birth
-          </label>
-          <input
-            type="text"
-            id="dob"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            placeholder="MM/DD/YYYY"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+          {/* DOB field */}
+          <div>
+            <label
+              htmlFor="dob"
+              className="block text-gray-700 font-medium mb-2"
+            >
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              id="dob"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+              placeholder="MM/DD/YYYY"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
 
-        <div className="mb-4">
-          <label
-            htmlFor="gender"
-            className="block text-gray-700 font-medium mb-2"
-          >
-            Gender
-          </label>
-          <select
-            id="gender"
-            value={gender}
-            onChange={(e) => setGender(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-            required
-          >
-            <option value="">Select gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="prefer-not-to-say">Prefer not to say</option>
-          </select>
-        </div>
+          {/* Gender field */}
+          <div>
+            <label
+              htmlFor="gender"
+              className="block text-gray-700 font-medium mb-2"
+            >
+              Gender
+            </label>
+            <select
+              id="gender"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+              required
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
+            </select>
+          </div>
 
-        <div className="mb-4">
-          <label
-            htmlFor="contact"
-            className="block text-gray-700 font-medium mb-2"
-          >
-            Contact Number
-          </label>
-          <input
-            type="tel"
-            id="contact"
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div className="mb-4">
-          <label
-            htmlFor="email"
-            className="block text-gray-700 font-medium mb-2"
-          >
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          {/* Contact field */}
+          <div>
+            <label
+              htmlFor="contact"
+              className="block text-gray-700 font-medium mb-2"
+            >
+              Contact Number
+            </label>
+            <input
+              type="tel"
+              id="contact"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
         </div>
 
         <div className="mb-4">
@@ -208,26 +199,9 @@ export default function PatientRegistrationForm({ db, onSuccess }: FormProps) {
           </select>
         </div>
 
-        <div className="mb-6">
-          <label
-            htmlFor="allergies"
-            className="block text-gray-700 font-medium mb-2"
-          >
-            Allergies
-          </label>
-          <textarea
-            id="allergies"
-            value={allergies}
-            onChange={(e) => setAllergies(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={3}
-            placeholder="List any known allergies here"
-          ></textarea>
-        </div>
-
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+          className="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors disabled:bg-blue-300"
           disabled={loading}
         >
           {loading ? "Processing..." : "Register"}

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { PGlite } from "@electric-sql/pglite";
 import DataTable, { TableProps } from "./_components/table";
-import Loading from "./_components/loading";
+import Loading, { InlineLoading } from "./_components/loading";
 import SqlEditor from "./_components/SqlEditor";
 import Notify from "./_components/Notify";
 import PatientRegistrationForm from "./_components/Form";
@@ -11,6 +11,7 @@ export default function Home() {
   const [db, setDb] = useState<PGlite | null>(null);
   const [queriedData, setQueriedData] = useState<TableProps | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [initialLoading, setInitialLoading] = useState<boolean>(false);
   const [query, setQuery] = useState<string>("");
   const [notification, setNotification] = useState<{
     type: "success" | "error";
@@ -22,8 +23,8 @@ export default function Home() {
     const initDb = async () => {
       try {
         const database = new PGlite({
-          dataDir: 'idb://my-pgdata',
-        })
+          dataDir: "idb://my-pgdata",
+        });
         setDb(database);
       } catch (error) {
         console.error("Failed to initialize PGlite:", error);
@@ -31,12 +32,10 @@ export default function Home() {
     };
 
     initDb();
-
-    return () => {};
   }, []);
 
   const createPatientsTable = async () => {
-    setLoading(true);
+    setInitialLoading(true);
     try {
       const res = await db?.exec(`
         CREATE TABLE IF NOT EXISTS patients (
@@ -45,15 +44,13 @@ export default function Home() {
           age INTEGER,
           gender TEXT,
           contact TEXT,
-          email TEXT,
           blood_group TEXT,
-          allergies TEXT,
           created_at TEXT
         );
-        INSERT INTO patients (name, age, gender, contact)
-        VALUES ('Akshat', 21, 'male', '1234567890');
-        INSERT INTO patients (name, age, gender, contact)
-        VALUES ('akshay', 21, 'male', '1234567890');
+        INSERT INTO patients (name, age, gender, contact, created_at)
+        VALUES ('Akshat', 21, 'male', '1234567890', '${Date.now()}');
+        INSERT INTO patients (name, age, gender, contact, created_at)
+        VALUES ('akshay', 21, 'male', '1234567890', '${Date.now()}');
       `);
 
       if (res) {
@@ -70,26 +67,8 @@ export default function Home() {
         message: `Error creating patients table: ${error.message}`,
       });
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
-  };
-
-  const createTable = async () => {
-    setLoading(true);
-    await db?.exec(`
-      CREATE TABLE IF NOT EXISTS todo (
-        id SERIAL PRIMARY KEY,
-        task TEXT,
-        done BOOLEAN DEFAULT false
-      );
-      INSERT INTO todo (task, done) VALUES ('Install PGlite from NPM', true);
-      INSERT INTO todo (task, done) VALUES ('Load PGlite', true);
-      INSERT INTO todo (task, done) VALUES ('Create a table', true);
-      INSERT INTO todo (task, done) VALUES ('Insert some data', true);
-      INSERT INTO todo (task) VALUES ('Update a task');
-  `);
-    setLoading(false);
-    alert("Table created!");
   };
 
   const fetchPatients = async () => {
@@ -126,7 +105,7 @@ export default function Home() {
   const fetchData = async () => {
     setLoading(true);
     const ret = await db?.query(`
-      SELECT * from todo;
+      SELECT * from patients;
     `);
     setLoading(false);
     if (ret) {
@@ -164,7 +143,7 @@ export default function Home() {
   const executeQuery = async () => {
     setLoading(true);
     setNotification(null);
-    
+
     try {
       const ret = await db?.exec(query);
       if (ret) {
@@ -191,36 +170,33 @@ export default function Home() {
       type: "success",
       message: "Patient registered successfully!",
     });
-    fetchPatients(); 
+    fetchPatients();
   };
 
+  // Add keyboard shortcut for executing queries
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "Enter") {
+        console.log("Ctrl + Enter pressed");
+        await executeQuery();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [executeQuery, query, db]);
+
   return (
-    <div className="items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:p-8 font-[family-name:var(--font-geist-sans)] bg-[#fffdfa]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        {(loading || !db) && <Loading />}
-        {notification && (
-          <Notify type={notification.type} message={notification.message} />
-        )}
-
-        <div className="w-full max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Patient Registration System</h1>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              {showForm ? "Hide Form" : "Register New Patient"}
-            </button>
-          </div>
-
-          {showForm && (
-            <div className="mb-8">
-              <PatientRegistrationForm db={db} onSuccess={handleFormSuccess} />
-            </div>
-          )}
-
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">Patient Records</h2>
+    <div className="items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:px-18 sm:py-2 font-[family-name:var(--font-geist-sans)] bg-[#dfdfdf]">
+      <div className="mt-2 flex gap-2 items-center sm:justify-start justify-center text-blue-700">
+        <img src="/logo.svg" alt="Logo" width={30} height={30} style={{ filter: "invert(23%) sepia(99%) saturate(7477%) hue-rotate(203deg) brightness(97%) contrast(101%)" }} />
+        <h1 className="text-2xl font-semibold">Patient Registration System</h1>
+      </div>
+      <main className="flex flex-col gap-2 row-start-2 items-center sm:items-start">
+        <div className="flex items-center gap-4">
+          <div className="flex gap-2 items-baseline">
             <button
               onClick={fetchPatients}
               className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors mb-4"
@@ -233,18 +209,37 @@ export default function Home() {
             >
               createPatientsTable
             </button>
-            {queriedData && <DataTable {...queriedData} />}
           </div>
+          <div className="flex justify-between items-center ">
+          </div>
+        </div>
+        {(initialLoading || !db) && <Loading />}
+       
 
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">SQL Query</h2>
-            <SqlEditor query={query} setQuery={setQuery} />
-            <button
-              onClick={executeQuery}
-              className="mt-2 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition-colors"
-            >
-              Execute Query
-            </button>
+        <div className="w-full gap-2 flex flex-col sm:flex-row  mx-auto">
+          <DataTable {...queriedData} />
+          <div className="flex flex-col w-full sm:w-[50%]  mx-auto h-[80vh] bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="bg-black text-white py-2 px-4 w-32 rounded-md hover:bg-gray-700 transition-colors"
+                >
+                {showForm ? "Use SQL" : "Use Form"}
+              </button>
+              {loading && <InlineLoading />}
+              {notification && (
+                <Notify type={notification.type} message={notification.message} />
+              )}
+            </div>
+            {showForm ? (
+              <div className="mb-8 ">
+                <PatientRegistrationForm db={db} onSuccess={handleFormSuccess} />
+              </div>
+            ) : (
+              <div className="w-full">
+                <SqlEditor query={query} setQuery={setQuery} executeQuery={executeQuery}/> 
+              </div>
+            )}
           </div>
         </div>
       </main>
