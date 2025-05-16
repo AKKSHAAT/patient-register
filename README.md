@@ -1,4 +1,4 @@
-
+![App Screenshot](https://raw.githubusercontent.com/AKKSHAAT/patient-register/refs/heads/master/public/image.png)
 > visit [https://patient-register-eight.vercel.app/](https://patient-register-eight.vercel.app/) Or
 ## To Run the app locally
 
