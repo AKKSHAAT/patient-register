@@ -5,6 +5,17 @@
 - clone the repo 
 
 ```git clone https://github.com/AKKSHAAT/patient-register.git```
+- install dependencies
+- 
+```bash
+npm i
+# or
+yarn i
+# or
+pnpm i
+# or
+bun i
+```
 
 - run the development server:
 
