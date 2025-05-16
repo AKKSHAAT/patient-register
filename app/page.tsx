@@ -69,7 +69,6 @@ export default function Home() {
   channel.onmessage = (e) => {
       if (e.data?.type === 'data-changed') {
         const req = e.data.payload.results;
-        console.log("Data changed in another tab", req);
         setQueriedData({
           data: {
             affectedRows: req.affectedRows ?? 0,
@@ -118,7 +117,6 @@ export default function Home() {
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "Enter") {
-        console.log("Ctrl + Enter pressed");
         await executeQuery();
       }
     };

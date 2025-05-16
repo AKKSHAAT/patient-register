@@ -1,4 +1,4 @@
-import { PGliteWorker } from '@electric-sql/pglite/worker';
+import { PGliteWorker } from "@electric-sql/pglite/worker";
 
 export const createPatientsTableQuery = `
   CREATE TABLE IF NOT EXISTS patients (
@@ -89,11 +89,11 @@ export const executeQueryHandler = async (
 ) => {
   try {
     const ret = await db?.exec(query);
-    if (query.toLowerCase().includes('select')) {
+    if (ret && query.toLowerCase().includes("select")) {
       const results = ret[0];
       if (results) {
-        const channel = new BroadcastChannel('patient-db-sync');
-        channel.postMessage({ type: 'data-changed', payload: { results } });
+        const channel = new BroadcastChannel("patient-db-sync");
+        channel.postMessage({ type: "data-changed", payload: { results } });
         channel.close(); // optional
         setQueriedData({
           data: {
@@ -103,7 +103,9 @@ export const executeQueryHandler = async (
           },
         });
       }
-    } else fetchPatients();
+    } else if (ret) {
+      fetchPatients();
+    }
 
     setNotification({
       type: "success",
