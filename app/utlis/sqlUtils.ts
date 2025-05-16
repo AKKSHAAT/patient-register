@@ -1,4 +1,4 @@
-import { PGlite } from "@electric-sql/pglite";
+import { PGliteWorker } from '@electric-sql/pglite/worker';
 
 export const createPatientsTableQuery = `
   CREATE TABLE IF NOT EXISTS patients (
@@ -8,23 +8,23 @@ export const createPatientsTableQuery = `
     gender TEXT,
     contact TEXT,
     blood_group TEXT,
-    created_at TEXT
+    description TEXT
   );
 `;
 
-// export const insertSamplePatientsQuery = `
-//   INSERT INTO patients (name, age, gender, contact,blood_group ,created_at)
-//   VALUES 
-//     ('Akshat', 21, 'male', '1234567890', 'B+','${Date.now()}'),
-//     ('Akshay', 21, 'male', '1234567890', 'B+','${Date.now()}');
-// `;
+export const insertSamplePatientsQuery = `
+  INSERT INTO patients (name, age, gender, contact,blood_group ,description)
+  VALUES 
+    ('Akshat', 21, 'male', '1234567890', 'B+','allergic to garlic'),
+    ('Akshay', 21, 'male', '1234567890', 'B+','None');
+`;
 
 export const fetchPatientsQuery = `
   SELECT * FROM patients;
 `;
 
 export const createPatientsTableHandler = async (
-  db: PGlite | null,
+  db: PGliteWorker | null,
   setNotification: Function,
   fetchPatients: Function
 ) => {
@@ -50,7 +50,7 @@ export const createPatientsTableHandler = async (
 };
 
 export const fetchPatientsHandler = async (
-  db: PGlite | null,
+  db: PGliteWorker | null,
   setQueriedData: Function,
   setNotification: Function
 ) => {
@@ -81,7 +81,7 @@ export const fetchPatientsHandler = async (
 };
 
 export const executeQueryHandler = async (
-  db: PGlite | null,
+  db: PGliteWorker | null,
   query: string,
   setNotification: Function,
   setQueriedData: Function,
@@ -91,7 +91,7 @@ export const executeQueryHandler = async (
     const ret = await db?.exec(query);
     if (query.toLowerCase().includes('select')) {
       const results = ret[0];
-      console.log("results: ", results);
+      // console.log("results: ", results);
       if (results) {
         setQueriedData({
           data: {

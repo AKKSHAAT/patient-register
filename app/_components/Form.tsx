@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PGlite } from "@electric-sql/pglite";
+import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { Patient } from "../page";
 
 interface FormProps {
-  db: PGlite | null;
+  db: PGliteWorker | null;
   onSuccess?: () => void;
   initialData?: Patient | null; // Add this prop
 }
@@ -21,6 +21,7 @@ export default function PatientRegistrationForm({
     gender: initialData?.gender || "",
     contact: initialData?.contact || "",
     bloodGroup: initialData?.blood_group || "",
+    description: initialData?.description || "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,11 +33,14 @@ export default function PatientRegistrationForm({
       gender: initialData?.gender || "",
       contact: initialData?.contact || "",
       bloodGroup: initialData?.blood_group || "",
+      description: initialData?.description || "",
     });
   }, [initialData]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
@@ -74,15 +78,11 @@ export default function PatientRegistrationForm({
 
       // Calculate age from DOB
       const age = calculateAge(formData.dob);
-      console.log(age);
-
-      // Format date for SQL
-      const currentDate = new Date().toISOString();
 
       // Execute the SQL to insert the new patient
       await db.query(
         `
-        INSERT INTO patients (name, age, gender, contact, blood_group, created_at)
+        INSERT INTO patients (name, age, gender, contact, blood_group, description)
         VALUES ($1, $2, $3, $4, $5, $6)
       `,
         [
@@ -91,7 +91,7 @@ export default function PatientRegistrationForm({
           formData.gender,
           formData.contact,
           formData.bloodGroup,
-          currentDate,
+          formData.description,
         ]
       );
 
@@ -102,6 +102,7 @@ export default function PatientRegistrationForm({
         gender: "",
         contact: "",
         bloodGroup: "",
+        description: "",
       });
 
       // Call success callback if provided
@@ -116,20 +117,41 @@ export default function PatientRegistrationForm({
     }
   };
 
+  const handleDelete = async () => {
+    if (!db || !initialData?.id) {
+      setError("Database not initialized or invalid patient ID");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await db.query(`DELETE FROM patients WHERE id = $1`, [initialData.id]);
+
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to delete patient");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
       <h4 className="text-xl font-medium mb-4">
-        Register New Patient Using a Form
+        {initialData ? "View Patient Details" : "Register New Patient"}
       </h4>
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
         </div>
-      )}{" "}
+      )}
       <form onSubmit={handleSubmit}>
-        {/* Responsive grid for name, dob, gender, contact */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* Name field */}
           <div>
             <label
               htmlFor="name"
@@ -144,10 +166,9 @@ export default function PatientRegistrationForm({
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              readOnly={!!initialData}
             />
           </div>
-
-          {/* DOB field */}
           <div>
             <label
               htmlFor="dob"
@@ -160,13 +181,11 @@ export default function PatientRegistrationForm({
               id="dob"
               value={formData.dob}
               onChange={handleInputChange}
-              placeholder="MM/DD/YYYY"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              readOnly={!!initialData}
             />
           </div>
-
-          {/* Gender field */}
           <div>
             <label
               htmlFor="gender"
@@ -180,6 +199,7 @@ export default function PatientRegistrationForm({
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
               required
+              disabled={!!initialData}
             >
               <option value="">Select gender</option>
               <option value="male">Male</option>
@@ -188,8 +208,6 @@ export default function PatientRegistrationForm({
               <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
           </div>
-
-          {/* Contact field */}
           <div>
             <label
               htmlFor="contact"
@@ -204,10 +222,10 @@ export default function PatientRegistrationForm({
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              readOnly={!!initialData}
             />
           </div>
         </div>
-
         <div className="mb-4">
           <label
             htmlFor="bloodGroup"
@@ -220,6 +238,7 @@ export default function PatientRegistrationForm({
             value={formData.bloodGroup}
             onChange={handleInputChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+            disabled={!!initialData}
           >
             <option value="">Select blood group</option>
             <option value="A+">A+</option>
@@ -232,7 +251,31 @@ export default function PatientRegistrationForm({
             <option value="O-">O-</option>
           </select>
         </div>
-        { !initialData && (
+        <div className="mb-4">
+          <label
+            htmlFor="description"
+            className="block text-gray-700 font-medium mb-2"
+          >
+            Patient Description
+          </label>
+          <textarea
+            id="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            className="w-full max-h-[370px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            readOnly={!!initialData}
+          />
+        </div>
+        {initialData ? (
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors disabled:bg-red-300"
+            disabled={loading}
+          >
+            {loading ? "Deleting..." : "Delete Patient"}
+          </button>
+        ) : (
           <button
             type="submit"
             className="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors disabled:bg-blue-300"
@@ -240,7 +283,7 @@ export default function PatientRegistrationForm({
           >
             {loading ? "Processing..." : "Register"}
           </button>
-        )} 
+        )}
       </form>
     </div>
   );

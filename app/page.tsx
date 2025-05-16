@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { PGlite } from "@electric-sql/pglite";
 import DataTable, { TableProps } from "./_components/table";
 import Loading, { InlineLoading } from "./_components/loading";
 import SqlEditor from "./_components/SqlEditor";
 import Notify from "./_components/Notify";
 import PatientRegistrationForm from "./_components/Form";
+import { PGliteWorker } from '@electric-sql/pglite/worker';
 import {
   createPatientsTableHandler,
   fetchPatientsHandler,
@@ -19,10 +19,11 @@ export interface Patient {
   gender: string | null;
   contact: string | null;
   blood_group: string | null;
+  description: string | null;
 }
 
 export default function Home() {
-  const [db, setDb] = useState<PGlite | null>(null);
+  const [db, setDb] = useState<PGliteWorker | null>(null);
   const [queriedData, setQueriedData] = useState<TableProps | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [initialLoading, setInitialLoading] = useState<boolean>(false);
@@ -37,9 +38,13 @@ export default function Home() {
   useEffect(() => {
     const initDb = async () => {
       try {
-        const database = new PGlite({
-          dataDir: "idb://my-pgdata",
-        });
+        const worker = new PGliteWorker(
+          new Worker(new URL('./pglite-worker.ts', import.meta.url), {
+            type: 'module',
+          }),
+        ); 
+
+        const database = worker;
         setDb(database);
         if (database) {
           setInitialLoading(true);
@@ -99,11 +104,18 @@ export default function Home() {
       }
     };
 
+    
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [executeQuery, query, db]);
+
+ 
+  const toggleForm = () => {
+    setShowForm(!showForm);
+    setSelectedPatient(null);
+  }
 
   return (
     <div className="items-center min-h-screen p-8 pt-0 pb-20 gap-16 sm:px-18 sm:py-2 font-[family-name:var(--font-geist-sans)] bg-[#dfdfdf]">
@@ -126,12 +138,12 @@ export default function Home() {
         </div>
         {(initialLoading || !db) && <Loading />}
 
-        <div className="w-full gap-2 flex flex-col sm:flex-row  mx-auto">
+        <div className="w-full gap-2 flex flex-col md:flex-row  mx-auto">
           <DataTable {...queriedData} handleSelectPatient={handleSelectPatient} />
-          <div className="flex flex-col w-full sm:w-[50%]  mx-auto h-[80vh] bg-white p-6 rounded-lg shadow-md">
+          <div className="flex flex-col w-full md:w-[50%]  mx-auto h-full md:h-[80vh] bg-white p-6 rounded-lg shadow-md">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => toggleForm()}
                 className="bg-black text-white py-2 px-4 w-32 rounded-md hover:bg-gray-700 transition-colors"
               >
                 {showForm ? "Use SQL" : "Use Form"}

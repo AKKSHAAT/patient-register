@@ -48,6 +48,7 @@ export default function DataTable({ data, handleSelectPatient }: TableProps) {
                   gender: row.gender,
                   contact: row.contact,
                   blood_group: row.blood_group,
+                  description: row.description,
                 })}
                 >
                 {headers.map((header, colIndex) => (
