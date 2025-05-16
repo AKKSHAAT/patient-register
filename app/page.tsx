@@ -34,6 +34,7 @@ export default function Home() {
   } | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const channel = new BroadcastChannel('patient-db-sync');
 
   useEffect(() => {
     const initDb = async () => {
@@ -62,6 +63,24 @@ export default function Home() {
 
     initDb();
   }, []);
+
+
+  useEffect(() => {
+  channel.onmessage = (e) => {
+      if (e.data?.type === 'data-changed') {
+        const req = e.data.payload.results;
+        console.log("Data changed in another tab", req);
+        setQueriedData({
+          data: {
+            affectedRows: req.affectedRows ?? 0,
+            fields: req.fields ?? [],
+            rows: req.rows
+          }
+        });// or re-run current query if SQL editor is active
+      }
+    };
+    return () => channel.close();
+  }, [db]);
 
   const fetchPatients = async () => {
     setLoading(true);

@@ -91,8 +91,10 @@ export const executeQueryHandler = async (
     const ret = await db?.exec(query);
     if (query.toLowerCase().includes('select')) {
       const results = ret[0];
-      // console.log("results: ", results);
       if (results) {
+        const channel = new BroadcastChannel('patient-db-sync');
+        channel.postMessage({ type: 'data-changed', payload: { results } });
+        channel.close(); // optional
         setQueriedData({
           data: {
             affectedRows: results.affectedRows ?? 0,
